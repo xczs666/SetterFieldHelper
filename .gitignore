@@ -1,0 +1,9 @@
+out/
+target/
+.idea/
+.gradle/
+build/
+idea-sandbox/
+*.iml
+*.ipr
+*.iws

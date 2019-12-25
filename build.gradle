@@ -1,0 +1,65 @@
+plugins {
+    id "org.jetbrains.intellij" version "0.4.15"
+    id "org.jetbrains.grammarkit" version "2019.3"
+    id "com.github.ManifestClasspath" version "0.1.0-RELEASE"
+}
+
+group 'org.example'
+version '1.0-SNAPSHOT'
+
+repositories {
+    jcenter()
+    mavenCentral()
+    maven { url "https://www.jitpack.io" }
+}
+
+// Fix Bug https://github.com/jitpack/jitpack.io/issues/3973
+project.repositories.removeAll {
+    it instanceof MavenArtifactRepository && it.url.toString() == 'https://jitpack.io'
+}
+
+
+apply plugin: 'java'
+apply plugin: 'idea'
+apply plugin: 'org.jetbrains.intellij'
+apply plugin: 'org.jetbrains.grammarkit'
+apply plugin: "com.github.ManifestClasspath"
+
+def ideaVersionExternDefinition = System.getenv("IDEA_VERSION")
+ideaVersion = ideaVersionExternDefinition ? ideaVersionExternDefinition : ideaVersion
+def isEAP = ideaVersion.contains("LATEST-EAP-SNAPSHOT") || ideaVersion.take(4).contains(".")
+def artifactVersion = pluginVersion + "-" + (isEAP ? "EAP" : ideaVersion)
+println "IdeaVersion is : ${ideaVersion}"
+println "ArtifactVersion is : ${artifactVersion}"
+
+group = pluginGroup
+version = artifactVersion
+
+sourceCompatibility = JavaVersion.VERSION_1_8
+targetCompatibility = JavaVersion.VERSION_1_8
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+//  options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
+}
+
+dependencies {
+    // https://mvnrepository.com/artifact/org.projectlombok/lombok
+    compileOnly group: 'org.projectlombok', name: 'lombok', version: "$lombokVersion"
+    testCompileOnly group: 'org.projectlombok', name: 'lombok', version: "$lombokVersion"
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+}
+
+// See https://github.com/JetBrains/gradle-intellij-plugin/
+intellij {
+    version ideaVersion
+    println "Building for IntelliJ version: ${version}"
+    sandboxDirectory = "${rootProject.projectDir}/idea-sandbox/idea-${ideaVersion}"
+    plugins 'java'
+}
+
+patchPluginXml {
+    version artifactVersion
+    pluginDescription """自动根据入参或者this生成返回参数类型代码"""
+    changeNotes """new plugin"""
+}
