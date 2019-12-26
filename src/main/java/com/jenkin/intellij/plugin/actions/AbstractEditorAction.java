@@ -1,25 +1,30 @@
 package com.jenkin.intellij.plugin.actions;
 
+import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.actionSystem.DataContext;
-import com.intellij.openapi.actionSystem.PlatformDataKeys;
+import com.intellij.openapi.command.undo.UndoUtil;
 import com.intellij.openapi.editor.Caret;
-import com.intellij.openapi.editor.CaretAction;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.SelectionModel;
 import com.intellij.openapi.editor.actionSystem.EditorAction;
 import com.intellij.openapi.editor.actionSystem.EditorActionHandler;
 import com.intellij.openapi.fileTypes.StdFileTypes;
+import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Pair;
-import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.*;
-import com.intellij.psi.impl.source.tree.java.PsiJavaTokenImpl;
-import com.intellij.psi.util.PsiTreeUtil;
-import com.intellij.psi.util.PsiTypesUtil;
-import com.intellij.psi.util.PsiUtilBase;
+import com.intellij.psi.codeStyle.JavaCodeStyleManager;
+import com.intellij.psi.util.*;
 import com.jenkin.intellij.plugin.data.Context;
+import com.jenkin.intellij.plugin.data.Parameter;
 import com.jenkin.intellij.plugin.handler.AbstractEditorWriteActionHandler;
+import com.jenkin.intellij.plugin.support.Strategy;
+import com.jenkin.intellij.plugin.utils.PsiAnnotationSearchUtil;
+import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.Collections;
 
 public abstract class AbstractEditorAction<T> extends EditorAction {
   protected final boolean setupHandler;
@@ -65,26 +70,35 @@ public abstract class AbstractEditorAction<T> extends EditorAction {
     if (null != psiFile
       && psiFile.isWritable()
       && !psiFile.isDirectory()
-      &&  StdFileTypes.JAVA.equals(psiFile.getFileType())) {
-      final PsiClass targetClass = getTargetClass(editor, psiFile);
-      if (null != targetClass) {
-        final PsiElement elementAtCaret = PsiUtilBase.getElementAtCaret(editor);
-        final PsiElement psiParent = PsiTreeUtil.getParentOfType(elementAtCaret,
-          PsiLocalVariable.class, PsiMethod.class);
+      && StdFileTypes.JAVA.equals(psiFile.getFileType())) {
+      final PsiClass myClass = getTargetClass(editor, psiFile);
+      final PsiElement elementAtCaret = PsiUtilBase.getElementAtCaret(editor);
+      final PsiLocalVariable variable = PsiTreeUtil.getParentOfType(elementAtCaret, PsiLocalVariable.class);
+      final PsiMethod method = PsiTreeUtil.getParentOfType(elementAtCaret, PsiMethod.class);
+      if (myClass != null && method != null) {
         final Context.ContextBuilder builder = Context.builder()
-        .elementAtCaret(elementAtCaret)
-        .psiClass(targetClass)
-        .psiFile(psiFile)
-        .psiParent(psiParent);
-        if (psiParent instanceof PsiLocalVariable) {
-         builder.variable((PsiLocalVariable) psiParent)
-         .targetClass(PsiTypesUtil.getPsiClass(((PsiLocalVariable) psiParent).getType()));
-
-        }else if (psiParent instanceof PsiMethod) {
-          builder.psiMethod((PsiMethod) psiParent)
-          .targetClass(PsiTypesUtil.getPsiClass(((PsiMethod) psiParent).getReturnType()));
+          .elementAtCaret(elementAtCaret)
+          .psiClass(myClass)
+          .psiFile(psiFile)
+          .variable(variable)
+          .method(method)
+          .parameters(Parameter.create(method.getParameterList().getParameters(), myClass));
+        if (variable != null) {
+          final PsiClass targetClass = PsiTypesUtil.getPsiClass(variable.getType());
+          assert targetClass != null;
+          builder.targetClass(targetClass)
+            .targetFields(Parameter.create(targetClass, variable.getName()));
+        } else if (method != null) {
+          if (method.isConstructor()) {
+            builder.targetClass(myClass)
+              .targetFields(Parameter.createThis(myClass));
+          } else {
+            final PsiClass targetClass = PsiTypesUtil.getPsiClass(method.getReturnType());
+            builder.targetClass(targetClass)
+              .targetFields(targetClass != null ? Parameter.create(targetClass, Parameter.buildParamName(targetClass.getName())) : Parameter.createThis(myClass));
+          }
         }
-
+        return new Pair<>(true, builder.build());
       }
     }
     return new Pair<>(false, null);
@@ -95,43 +109,31 @@ public abstract class AbstractEditorAction<T> extends EditorAction {
   }
 
 
+  protected void executeMyWriteActionPerCaret(Editor editor, Caret caret, DataContext dataContext, Context context) {
+    Strategy strategy;
 
-  protected void executeMyWriteActionPerCaret(Editor editor, Caret caret, DataContext dataContext, Context additionalParam) {
 
-
-    final SelectionModel selectionModel = editor.getSelectionModel();
-    String selectedText = selectionModel.getSelectedText();
-
-    if (selectedText == null) {
-      selectSomethingUnderCaret(editor, dataContext, selectionModel);
-      selectedText = selectionModel.getSelectedText();
-
-      if (selectedText == null) {
-        return;
-      }
+//    context.getTargetClass().getAnnotation()
+    if (!context.getTargetFields().isThs() && context.getTargetClass() != null
+      && (context.getTargetClass().hasAnnotation("lombok.Builder")
+      || context.getTargetClass().hasAnnotation("lombok.experimental.SuperBuilder"))) {
+      strategy = Strategy.BUILDER;
+    } else {
+      strategy = Strategy.NORMAL;
     }
-
-    String s = transformSelection(editor, dataContext, selectedText, additionalParam);
-    s = s.replace("\r\n", "\n");
-    s = s.replace("\r", "\n");
-    editor.getDocument().replaceString(selectionModel.getSelectionStart(), selectionModel.getSelectionEnd(), s);
-  }
-
-  protected String transformSelection(Editor editor, DataContext dataContext, String selectedText, Context additionalParam) {
-    String[] textParts = selectedText.split("\n");
-
-
-    return "aaaaa";
-  }
-
-  protected boolean selectSomethingUnderCaret(Editor editor, DataContext dataContext, SelectionModel selectionModel) {
-    selectionModel.selectLineAtCaret();
-    String selectedText = selectionModel.getSelectedText();
-    if (selectedText != null && selectedText.endsWith("\n")) {
-      selectionModel.setSelection(selectionModel.getSelectionStart(), selectionModel.getSelectionEnd() - 1);
+    StringBuilder data = new StringBuilder();
+    if (context.getVariable() == null) {
+      data.append(context.getTargetFields().getPsiClass().getName() + " " + context.getTargetFields().getName() + "\n");
+    } else {
+      data.append(context.getTargetFields().getName() + "\n");
     }
-    return true;
+//    editor.getDocument().replaceString(selectionModel.getSelectionStart(), selectionModel.getSelectionEnd(), s);
+    editor.getDocument().insertString(context.getMethod().getBody().getTextOffset() + 1, data.toString());
+    final PsiFile psiFile = PsiUtilBase.getPsiFileInEditor(editor, editor.getProject());
+    JavaCodeStyleManager.getInstance(editor.getProject()).optimizeImports(psiFile);
+    UndoUtil.markPsiFileForUndo(psiFile);
   }
+
   @Nullable
   private PsiClass getTargetClass(Editor editor, PsiFile file) {
     int offset = editor.getCaretModel().getOffset();
@@ -142,4 +144,5 @@ public abstract class AbstractEditorAction<T> extends EditorAction {
     final PsiClass target = PsiTreeUtil.getParentOfType(element, PsiClass.class);
     return target instanceof SyntheticElement ? null : target;
   }
+
 }

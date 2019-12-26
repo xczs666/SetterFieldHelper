@@ -6,13 +6,13 @@ public class Strategy {
   private final Formatter outMethodArgField;
   public static final Strategy NORMAL = Strategy.builder()
     .outMethodArgMethod(Formatter.builder().line(String.format("%s.%s(%s.%s());\n", Formatter.OBJ, Formatter.SET_METHOD_NAME, Formatter.ARG, Formatter.GET_METHOD_NAME)).build())
-    .outMethodArgField(Formatter.builder().line(String.format("%s.%s(%s.%s);\n", Formatter.OBJ, Formatter.SET_METHOD_NAME, Formatter.ARG, Formatter.GET_FIELD_NAME)).build())
-    .outFieldArgMethod(Formatter.builder().line(String.format("%s.%s = %s.%s();\n", Formatter.OBJ, Formatter.SET_FIELD_NAME, Formatter.ARG, Formatter.GET_METHOD_NAME)).build())
+    .outMethodArgField(Formatter.builder().line(String.format("%s.%s(%s.%s);\n", Formatter.OBJ, Formatter.SET_METHOD_NAME, Formatter.ARG, Formatter.FIELD_NAME)).build())
+    .outFieldArgMethod(Formatter.builder().line(String.format("%s.%s = %s.%s();\n", Formatter.OBJ, Formatter.FIELD_NAME, Formatter.ARG, Formatter.GET_METHOD_NAME)).build())
     .build();
   public static final Strategy BUILDER = Strategy.builder()
     .outMethodArgMethod(Formatter.builder().prefix(Formatter.OBJ+".builder()").line(String.format("%s.%s(%s.%s())\n", Formatter.OBJ, Formatter.SET_METHOD_NAME, Formatter.ARG, Formatter.GET_METHOD_NAME)).suffix("build();").build())
-    .outMethodArgField(Formatter.builder().prefix(Formatter.OBJ+".builder()").line(String.format("%s.%s(%s.%s)\n", Formatter.OBJ, Formatter.SET_METHOD_NAME, Formatter.ARG, Formatter.GET_FIELD_NAME)).suffix("build();").build())
-    .outFieldArgMethod(Formatter.builder().line(String.format("%s.%s = %s.%s();\n", Formatter.OBJ, Formatter.SET_FIELD_NAME, Formatter.ARG, Formatter.GET_METHOD_NAME)).build())
+    .outMethodArgField(Formatter.builder().prefix(Formatter.OBJ+".builder()").line(String.format("%s.%s(%s.%s)\n", Formatter.OBJ, Formatter.SET_METHOD_NAME, Formatter.ARG, Formatter.FIELD_NAME)).suffix("build();").build())
+    .outFieldArgMethod(Formatter.builder().line(String.format("%s.%s = %s.%s();\n", Formatter.OBJ, Formatter.FIELD_NAME, Formatter.ARG, Formatter.GET_METHOD_NAME)).build())
     .build();
 
   Strategy(Formatter outMethodArgMethod, Formatter outFieldArgMethod, Formatter outMethodArgField) {

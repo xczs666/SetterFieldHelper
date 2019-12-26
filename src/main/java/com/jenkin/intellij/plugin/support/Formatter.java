@@ -4,13 +4,11 @@ public class Formatter {
   public static final String OBJ = "${obj}";
   public static final String ARG = "${arg}";
   public static final String FIELD_NAME = "${fieldName}";
-  public static final String GET_FIELD_NAME = "${getFieldName}";
-  public static final String SET_FIELD_NAME = "${setFieldName}";
   public static final String GET_METHOD_NAME = "${getMethodName}";
   public static final String SET_METHOD_NAME = "${setMethodName}";
-  private String prefix;
+  private String prefix = "";
   private String line;
-  private String suffix;
+  private String suffix = "";
 
   Formatter(String prefix, String line, String suffix) {
     this.prefix = prefix;
