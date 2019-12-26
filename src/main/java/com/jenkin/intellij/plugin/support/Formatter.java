@@ -1,54 +1,84 @@
 package com.jenkin.intellij.plugin.support;
 
-public class Formatter {
-  public static final String OBJ = "${obj}";
-  public static final String ARG = "${arg}";
-  public static final String FIELD_NAME = "${fieldName}";
-  public static final String GET_METHOD_NAME = "${getMethodName}";
-  public static final String SET_METHOD_NAME = "${setMethodName}";
-  private String prefix = "";
-  private String line;
-  private String suffix = "";
+import org.apache.commons.lang.StringUtils;
 
-  Formatter(String prefix, String line, String suffix) {
-    this.prefix = prefix;
+public class Formatter {
+  public static final String RET = "<ret>";
+  public static final String RET_CLASS = "<retClass>";
+  public static final String RET_FIELD_NAME = "<retFieldName>";
+  public static final String RET_GET_METHOD_NAME = "<retGetMethodName>";
+  public static final String RET_SET_METHOD_NAME = "<retSetMethodName>";
+  public static final String ARG = "<arg>";
+  public static final String ARG_FIELD_NAME = "<argFieldName>";
+  public static final String ARG_GET_METHOD_NAME = "<argGetMethodName>";
+  public static final String ARG_SET_METHOD_NAME = "<argSetMethodName>";
+  private String prefix;
+  private String line;
+  private String emptyLine;
+  private String suffix;
+
+  Formatter(String prefix, String line, String emptyLine, String suffix) {
+    this.prefix = StringUtils.defaultString(prefix);
     this.line = line;
-    this.suffix = suffix;
+    this.emptyLine = emptyLine;
+    this.suffix = StringUtils.defaultString(suffix);
   }
 
   public static FormatterBuilder builder() {
     return new FormatterBuilder();
   }
 
+  public String getPrefix() {
+    return this.prefix;
+  }
+
+  public String getLine() {
+    return this.line;
+  }
+
+  public String getEmptyLine() {
+    return this.emptyLine;
+  }
+
+  public String getSuffix() {
+    return this.suffix;
+  }
+
   public static class FormatterBuilder {
     private String prefix;
     private String line;
+    private String emptyLine;
     private String suffix;
 
     FormatterBuilder() {
     }
 
-    public FormatterBuilder prefix(String prefix) {
+    public Formatter.FormatterBuilder prefix(String prefix) {
       this.prefix = prefix;
       return this;
     }
 
-    public FormatterBuilder line(String line) {
+    public Formatter.FormatterBuilder line(String line) {
       this.line = line;
       return this;
     }
 
-    public FormatterBuilder suffix(String suffix) {
+    public Formatter.FormatterBuilder emptyLine(String emptyLine) {
+      this.emptyLine = emptyLine;
+      return this;
+    }
+
+    public Formatter.FormatterBuilder suffix(String suffix) {
       this.suffix = suffix;
       return this;
     }
 
     public Formatter build() {
-      return new Formatter(prefix, line, suffix);
+      return new Formatter(prefix, line, emptyLine, suffix);
     }
 
     public String toString() {
-      return "Formatter.FormatterBuilder(prefix=" + this.prefix + ", line=" + this.line + ", suffix=" + this.suffix + ")";
+      return "Formatter.FormatterBuilder(prefix=" + this.prefix + ", line=" + this.line + ", emptyLine=" + this.emptyLine + ", suffix=" + this.suffix + ")";
     }
   }
 }

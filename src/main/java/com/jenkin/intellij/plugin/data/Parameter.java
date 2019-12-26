@@ -41,25 +41,30 @@ public class Parameter {
     return this.fields;
   }
 
-  private static class Field {
-    private final PsiField field;
+  public static class Field {
     private final String fieldName;
+    private String lowerFiledName;
     private final String getMethodName;
     private final String setMethodName;
+    private final PsiField field;
 
-    Field(PsiField field, String fieldName, String getMethodName, String setMethodName) {
-      this.field = field;
+    Field(String fieldName, String lowerFiledName, String getMethodName, String setMethodName, PsiField field) {
       this.fieldName = fieldName;
+      this.lowerFiledName = lowerFiledName;
       this.getMethodName = getMethodName;
       this.setMethodName = setMethodName;
+      this.field = field;
     }
 
     public static FieldBuilder builder() {
       return new FieldBuilder();
     }
 
-    public PsiField getField() {
-      return this.field;
+    public String getLowerFiledName() {
+      if (lowerFiledName == null) {
+        this.lowerFiledName = fieldName.replaceAll("[^A-Za-z0-9]", "").toLowerCase();
+      }
+      return lowerFiledName;
     }
 
     public String getFieldName() {
@@ -74,22 +79,27 @@ public class Parameter {
       return this.setMethodName;
     }
 
+    public PsiField getField() {
+      return this.field;
+    }
+
     public static class FieldBuilder {
-      private PsiField field;
       private String fieldName;
+      private String lowerFiledName;
       private String getMethodName;
       private String setMethodName;
+      private PsiField field;
 
       FieldBuilder() {
       }
 
-      public Field.FieldBuilder field(PsiField field) {
-        this.field = field;
+      public Field.FieldBuilder fieldName(String fieldName) {
+        this.fieldName = fieldName;
         return this;
       }
 
-      public Field.FieldBuilder fieldName(String fieldName) {
-        this.fieldName = fieldName;
+      public Field.FieldBuilder lowerFiledName(String lowerFiledName) {
+        this.lowerFiledName = lowerFiledName;
         return this;
       }
 
@@ -103,12 +113,17 @@ public class Parameter {
         return this;
       }
 
+      public Field.FieldBuilder field(PsiField field) {
+        this.field = field;
+        return this;
+      }
+
       public Field build() {
-        return new Field(field, fieldName, getMethodName, setMethodName);
+        return new Field(fieldName, lowerFiledName, getMethodName, setMethodName, field);
       }
 
       public String toString() {
-        return "Parameter.Field.FieldBuilder(field=" + this.field + ", fieldName=" + this.fieldName + ", getMethodName=" + this.getMethodName + ", setMethodName=" + this.setMethodName + ")";
+        return "Parameter.Field.FieldBuilder(fieldName=" + this.fieldName + ", lowerFiledName=" + this.lowerFiledName + ", getMethodName=" + this.getMethodName + ", setMethodName=" + this.setMethodName + ", field=" + this.field + ")";
       }
     }
   }
@@ -167,8 +182,15 @@ public class Parameter {
     if (!clzSetter && psiClass.hasAnnotation("lombok.Setter")) {
       clzSetter = true;
     }
+    boolean hasBuilder = false;
+    if (psiClass.hasAnnotation("lombok.Builder") || psiClass.hasAnnotation("lombok.experimental.SuperBuilder")) {
+      hasBuilder = true;
+    }
     for (PsiField psiField : allFields) {
       String setName = clzSetter || psiField.hasAnnotation("lombok.Setter") ? "set" + buildMethodName(psiField.getName()) : null;
+      if (setName == null && hasBuilder) {
+        setName = psiField.getName();
+      }
       if (setName == null) {
         PsiMethod setter = PropertyUtil.findPropertySetter(psiClass, psiField.getName(), psiField.hasModifierProperty(PsiModifier.STATIC), true);
         if (setter != null) {
