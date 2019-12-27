@@ -153,7 +153,7 @@ public class Parameter {
       .name(name)
       .ths(isThis)
       .psiClass(psiClass)
-      .fields(of(psiClass))
+      .fields(of(psiClass, isThis))
       .build();
   }
 
@@ -163,11 +163,11 @@ public class Parameter {
     return Parameter.builder()
       .name(in.getName())
       .psiClass(psiClass)
-      .fields(of(psiClass))
+      .fields(of(psiClass, false))
       .build();
   }
 
-  private static List<Field> of(@NotNull final PsiClass psiClass) {
+  private static List<Field> of(@NotNull final PsiClass psiClass, boolean containEmptyMethod) {
     final PsiField[] allFields = psiClass.getAllFields();
     final List<Field> fields = new ArrayList<>(allFields.length);
     boolean clzSetter = false;
@@ -204,7 +204,7 @@ public class Parameter {
           getName = getter.getName();
         }
       }
-      if (null != getName || null != setName) {
+      if (containEmptyMethod || null != getName || null != setName) {
         fields.add(Field.builder().field(psiField).fieldName(psiField.getName())
           .setMethodName(setName)
           .getMethodName(getName)
