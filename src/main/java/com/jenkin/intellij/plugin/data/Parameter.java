@@ -132,7 +132,10 @@ public class Parameter {
   public static List<Parameter> create(@NotNull final PsiParameter[] psiParameters, PsiClass thisClass) {
     final List<Parameter> list = new ArrayList<>(psiParameters.length + 1);
     for (PsiParameter psiParameter : psiParameters) {
-      list.add(create(psiParameter));
+      Parameter parameter = create(psiParameter);
+      if (parameter != null) {
+        list.add(parameter);
+      }
     }
     if (thisClass != null) {
       list.add(createThis(thisClass));
@@ -159,7 +162,9 @@ public class Parameter {
 
   public static Parameter create(@NotNull final PsiParameter in) {
     final PsiClass psiClass = PsiTypesUtil.getPsiClass(in.getType());
-    assert psiClass != null;
+    if (psiClass == null) {
+      return null;
+    }
     return Parameter.builder()
       .name(in.getName())
       .psiClass(psiClass)
