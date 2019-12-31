@@ -1,31 +1,29 @@
 package com.jenkin.intellij.plugin.data;
 
-import com.intellij.psi.*;
+import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiMethod;
+import com.jenkin.intellij.plugin.support.ParameterClass;
+import com.jenkin.intellij.plugin.support.TargetClass;
+import com.jenkin.intellij.plugin.support.ThisClass;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
-
 public class Context {
-  private final PsiFile psiFile;
-  private final PsiClass psiClass;
+  private final ThisClass thisClass;
   private final PsiElement elementAtCaret;
-  private final PsiLocalVariable variable;
   private final PsiMethod method;
   // 返回类型
-  private final PsiClass targetClass;
-  // 返回类型的域
-  private final Parameter targetFields;
+  private final TargetClass targetClass;
   // 入参
-  private final List<Parameter> parameters;
+  private final List<ParameterClass> parameters;
 
-  Context(PsiFile psiFile, PsiClass psiClass, PsiElement elementAtCaret, PsiLocalVariable variable, PsiMethod method, PsiClass targetClass, Parameter targetFields, List<Parameter> parameters) {
-    this.psiFile = psiFile;
-    this.psiClass = psiClass;
+  Context(ThisClass thisClass, PsiElement elementAtCaret, PsiMethod method, TargetClass targetClass, List<ParameterClass> parameters) {
+    this.thisClass = thisClass;
     this.elementAtCaret = elementAtCaret;
-    this.variable = variable;
     this.method = method;
     this.targetClass = targetClass;
-    this.targetFields = targetFields;
     this.parameters = parameters;
   }
 
@@ -33,58 +31,38 @@ public class Context {
     return new ContextBuilder();
   }
 
-  public PsiFile getPsiFile() {
-    return this.psiFile;
-  }
-
-  public PsiClass getPsiClass() {
-    return this.psiClass;
+  public ThisClass getThisClass() {
+    return this.thisClass;
   }
 
   public PsiElement getElementAtCaret() {
     return this.elementAtCaret;
   }
 
-  public PsiLocalVariable getVariable() {
-    return this.variable;
-  }
-
   public PsiMethod getMethod() {
     return this.method;
   }
 
-  public PsiClass getTargetClass() {
+  public TargetClass getTargetClass() {
     return this.targetClass;
   }
 
-  public Parameter getTargetFields() {
-    return this.targetFields;
-  }
-
-  public List<Parameter> getParameters() {
+  public List<ParameterClass> getParameters() {
     return this.parameters;
   }
 
   public static class ContextBuilder {
-    private PsiFile psiFile;
-    private PsiClass psiClass;
+    private ThisClass thisClass;
     private PsiElement elementAtCaret;
-    private PsiLocalVariable variable;
     private PsiMethod method;
-    private PsiClass targetClass;
-    private Parameter targetFields;
-    private List<Parameter> parameters;
+    private TargetClass targetClass;
+    private ArrayList<ParameterClass> parameters;
 
     ContextBuilder() {
     }
 
-    public Context.ContextBuilder psiFile(PsiFile psiFile) {
-      this.psiFile = psiFile;
-      return this;
-    }
-
-    public Context.ContextBuilder psiClass(PsiClass psiClass) {
-      this.psiClass = psiClass;
+    public Context.ContextBuilder thisClass(ThisClass thisClass) {
+      this.thisClass = thisClass;
       return this;
     }
 
@@ -93,37 +71,52 @@ public class Context {
       return this;
     }
 
-    public Context.ContextBuilder variable(PsiLocalVariable variable) {
-      this.variable = variable;
-      return this;
-    }
-
     public Context.ContextBuilder method(PsiMethod method) {
       this.method = method;
       return this;
     }
 
-    public Context.ContextBuilder targetClass(PsiClass targetClass) {
+    public Context.ContextBuilder targetClass(TargetClass targetClass) {
       this.targetClass = targetClass;
       return this;
     }
 
-    public Context.ContextBuilder targetFields(Parameter targetFields) {
-      this.targetFields = targetFields;
+    public Context.ContextBuilder parameter(ParameterClass parameter) {
+      if (this.parameters == null) this.parameters = new ArrayList<ParameterClass>();
+      this.parameters.add(parameter);
       return this;
     }
 
-    public Context.ContextBuilder parameters(List<Parameter> parameters) {
-      this.parameters = parameters;
+    public Context.ContextBuilder parameters(Collection<? extends ParameterClass> parameters) {
+      if (this.parameters == null) this.parameters = new ArrayList<ParameterClass>();
+      this.parameters.addAll(parameters);
+      return this;
+    }
+
+    public Context.ContextBuilder clearParameters() {
+      if (this.parameters != null)
+        this.parameters.clear();
       return this;
     }
 
     public Context build() {
-      return new Context(psiFile, psiClass, elementAtCaret, variable, method, targetClass, targetFields, parameters);
+      List<ParameterClass> parameters;
+      switch (this.parameters == null ? 0 : this.parameters.size()) {
+        case 0:
+          parameters = java.util.Collections.emptyList();
+          break;
+        case 1:
+          parameters = java.util.Collections.singletonList(this.parameters.get(0));
+          break;
+        default:
+          parameters = java.util.Collections.unmodifiableList(new ArrayList<ParameterClass>(this.parameters));
+      }
+
+      return new Context(thisClass, elementAtCaret, method, targetClass, parameters);
     }
 
     public String toString() {
-      return "Context.ContextBuilder(psiFile=" + this.psiFile + ", psiClass=" + this.psiClass + ", elementAtCaret=" + this.elementAtCaret + ", variable=" + this.variable + ", method=" + this.method + ", targetClass=" + this.targetClass + ", targetFields=" + this.targetFields + ", parameters=" + this.parameters + ")";
+      return "Context.ContextBuilder(thisClass=" + this.thisClass + ", elementAtCaret=" + this.elementAtCaret + ", method=" + this.method + ", targetClass=" + this.targetClass + ", parameters=" + this.parameters + ")";
     }
   }
 }

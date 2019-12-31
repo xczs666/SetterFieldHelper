@@ -1,38 +1,32 @@
 package com.jenkin.intellij.plugin.actions;
 
-import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.actionSystem.DataContext;
-import com.intellij.openapi.command.undo.UndoUtil;
 import com.intellij.openapi.editor.Caret;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
-import com.intellij.openapi.editor.SelectionModel;
 import com.intellij.openapi.editor.actionSystem.EditorAction;
 import com.intellij.openapi.editor.actionSystem.EditorActionHandler;
 import com.intellij.openapi.fileTypes.StdFileTypes;
-import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Pair;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.*;
 import com.intellij.psi.codeStyle.CodeStyleManager;
-import com.intellij.psi.codeStyle.JavaCodeStyleManager;
-import com.intellij.psi.util.*;
+import com.intellij.psi.util.PsiTreeUtil;
+import com.intellij.psi.util.PsiTypesUtil;
+import com.intellij.psi.util.PsiUtilBase;
 import com.jenkin.intellij.plugin.data.Context;
-import com.jenkin.intellij.plugin.data.Parameter;
 import com.jenkin.intellij.plugin.handler.AbstractEditorWriteActionHandler;
-import com.jenkin.intellij.plugin.support.Formatter;
-import com.jenkin.intellij.plugin.support.Strategy;
-import com.jenkin.intellij.plugin.utils.PsiAnnotationSearchUtil;
-import lombok.Builder;
-import lombok.experimental.SuperBuilder;
+import com.jenkin.intellij.plugin.handler.ExpressionBuilder;
+import com.jenkin.intellij.plugin.support.ParameterClass;
+import com.jenkin.intellij.plugin.support.TargetClass;
+import com.jenkin.intellij.plugin.support.ThisClass;
+import com.jenkin.intellij.plugin.utils.NameUtil;
 import org.bouncycastle.util.Arrays;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Collections;
-import java.util.Optional;
 
-public abstract class AbstractEditorAction<T> extends EditorAction {
+public abstract class AbstractEditorAction extends EditorAction {
   protected final boolean setupHandler;
 
   protected AbstractEditorAction() {
@@ -62,10 +56,6 @@ public abstract class AbstractEditorAction<T> extends EditorAction {
     this.setupHandler = setupHandler;
   }
 
-  protected Class getActionClass() {
-    return getClass();
-  }
-
   @NotNull
   public Pair<Boolean, Context> beforeWriteAction(Editor editor, DataContext dataContext) {
     if (editor == null || editor.getProject() == null) {
@@ -77,40 +67,37 @@ public abstract class AbstractEditorAction<T> extends EditorAction {
       && psiFile.isWritable()
       && !psiFile.isDirectory()
       && StdFileTypes.JAVA.equals(psiFile.getFileType())) {
-      final PsiClass myClass = getTargetClass(editor, psiFile);
-      final PsiElement elementAtCaret = PsiUtilBase.getElementAtCaret(editor);
-      final PsiLocalVariable variable = PsiTreeUtil.getParentOfType(elementAtCaret, PsiLocalVariable.class);
+      final PsiClass thisPsiClass = getTargetClass(editor, psiFile);
+      PsiElement elementAtCaret = PsiUtilBase.getElementAtCaret(editor);
+      PsiLocalVariable variable = PsiTreeUtil.getParentOfType(elementAtCaret, PsiLocalVariable.class);
+      if (variable == null) {
+        editor.getCaretModel().moveToOffset(editor.getCaretModel().getOffset() - 1);
+        elementAtCaret = PsiUtilBase.getElementAtCaret(editor);
+        variable = PsiTreeUtil.getParentOfType(elementAtCaret, PsiLocalVariable.class);
+      }
       final PsiMethod method = PsiTreeUtil.getParentOfType(elementAtCaret, PsiMethod.class);
-      if (myClass != null && method != null) {
+      if (thisPsiClass != null && method != null) {
         final Context.ContextBuilder builder = Context.builder()
           .elementAtCaret(elementAtCaret)
-          .psiClass(myClass)
-          .psiFile(psiFile)
-          .variable(variable)
+          .thisClass(ThisClass.create(thisPsiClass))
           .method(method);
 
         if (variable != null) {
           final PsiClass targetClass = PsiTypesUtil.getPsiClass(variable.getType());
-          assert targetClass != null;
-          builder.targetClass(targetClass)
-            .targetFields(Parameter.create(targetClass, variable.getName()))
-            .parameters(Parameter.create(method.getParameterList().getParameters(), myClass));
-        } else if (method != null) {
-          if (method.isConstructor()) {
-            builder.targetClass(myClass)
-              .targetFields(Parameter.createThis(myClass))
-              .parameters(Parameter.create(method.getParameterList().getParameters(), null));
-            ;
+          builder.targetClass(TargetClass.createUseVariable(targetClass, variable.getName()));
+        } else {
+          final PsiClass targetClass = PsiTypesUtil.getPsiClass(method.getReturnType());
+          if (targetClass == null) {
+            builder.targetClass(TargetClass.createUseMethod(thisPsiClass, "this", true));
           } else {
-            final PsiClass targetClass = PsiTypesUtil.getPsiClass(method.getReturnType());
-            builder.targetClass(targetClass)
-              .targetFields(targetClass != null ? Parameter.create(targetClass, Parameter.buildParamName(targetClass.getName())) : Parameter.createThis(myClass))
-              .parameters(Parameter.create(method.getParameterList().getParameters(), null));
-            ;
+            builder.targetClass(TargetClass.createUseMethod(targetClass, NameUtil.variableName(targetClass.getName()), false));
           }
         }
-
-        return new Pair<>(true, builder.build());
+        Context context = builder.parameters(ParameterClass.create(method.getParameterList().getParameters())).build();
+        if (!context.getThisClass().isSame(context.getTargetClass())) {
+          context = builder.parameter(ParameterClass.create(context.getThisClass().getPsiClass(), "this")).build();
+        }
+        return new Pair<>(true, context);
       }
     }
     return new Pair<>(false, null);
@@ -122,23 +109,11 @@ public abstract class AbstractEditorAction<T> extends EditorAction {
 
 
   protected void executeMyWriteActionPerCaret(Editor editor, Caret caret, DataContext dataContext, Context context) {
-    final Strategy strategy;
 //    context.getTargetClass().getAnnotation()
-    final Parameter targetFields = context.getTargetFields();
-    if (!targetFields.isThs() && context.getTargetClass() != null
-      && (context.getTargetClass().hasAnnotation("lombok.Builder")
-      || context.getTargetClass().hasAnnotation("lombok.experimental.SuperBuilder"))) {
-      strategy = Strategy.BUILDER;
-    } else {
-      strategy = Strategy.NORMAL;
-    }
+    String expression = ExpressionBuilder.of(context.getTargetClass(), context.getParameters()).buildExpression();
 
-    final StringBuilder data = new StringBuilder();
     int offset = editor.getCaretModel().getOffset();
-    // 需要new
-    if (context.getVariable() == null && !context.getTargetFields().isThs()) {
-      data.append(targetFields.getPsiClass().getName() + " " + targetFields.getName() + " = ");
-    } else if (context.getVariable() != null && !context.getMethod().isConstructor()) {// 已經有 Object obj
+    if (context.getTargetClass().isUseVariable()) {// 已經有 Object obj
       CharSequence charSequence = editor.getDocument().getImmutableCharSequence();
       char[] breakChar = new char[]{' ', '\t', '\n', '=', '}', '\r'};
       for (; offset < charSequence.length(); offset++) {
@@ -147,75 +122,13 @@ public abstract class AbstractEditorAction<T> extends EditorAction {
           break;
         }
       }
-      // 已存在Object obj
-      data.append(" = ");
-    }
-    final Formatter formatter;
-    if (targetFields.isThs()) {
-      formatter = strategy.getOutFieldArgMethod();
-    } else if (context.getMethod().hasParameters()) {
-      formatter = strategy.getOutMethodArgMethod();
-    } else {
-      formatter = strategy.getOutMethodArgField();
     }
 
-    data.append(formatter.getPrefix().replaceAll(Formatter.RET_CLASS, targetFields.getPsiClass().getName()));
-
-    for (Parameter.Field targetField : targetFields.getFields()) {
-      Parameter tag = null;
-      Parameter.Field tagField = null;
-      String fn = targetField.getFieldName();
-      for (Parameter parameter : context.getParameters()) {
-        for (Parameter.Field field : parameter.getFields()) {
-          if (fn.equals(field.getFieldName())) {
-            tagField = field;
-            break;
-          }
-        }
-        if (tagField != null) {
-          tag = parameter;
-          break;
-        }
-      }
-      if (tagField == null) {
-        fn = fn.replaceAll("[^A-Za-z0-9]", "");
-        for (Parameter parameter : context.getParameters()) {
-          for (Parameter.Field field : parameter.getFields()) {
-            if (fn.equals(field.getLowerFiledName())) {
-              tagField = field;
-              break;
-            }
-          }
-          if (tagField != null) {
-            tag = parameter;
-            break;
-          }
-        }
-      }
-      if (tagField == null) {
-        data.append(formatter.getEmptyLine().replaceAll(Formatter.RET, targetFields.getName())
-          .replaceAll(Formatter.RET_FIELD_NAME, targetField.getFieldName())
-          .replaceAll(Formatter.RET_SET_METHOD_NAME, targetField.getSetMethodName())
-          .replaceAll(Formatter.RET_GET_METHOD_NAME, targetField.getGetMethodName()));
-      } else {
-        data.append(formatter.getLine().replaceAll(Formatter.RET, targetFields.getName())
-          .replaceAll(Formatter.RET_FIELD_NAME, targetField.getFieldName())
-          .replaceAll(Formatter.RET_SET_METHOD_NAME, targetField.getSetMethodName())
-          .replaceAll(Formatter.RET_GET_METHOD_NAME, targetField.getGetMethodName())
-          .replaceAll(Formatter.ARG, tag.getName())
-          .replaceAll(Formatter.ARG_FIELD_NAME, tagField.getFieldName())
-          .replaceAll(Formatter.ARG_GET_METHOD_NAME, tagField.getGetMethodName())
-          .replaceAll(Formatter.ARG_SET_METHOD_NAME, tagField.getSetMethodName()));
-      }
-    }
-    data.append(formatter.getSuffix());
-
-
-    editor.getDocument().insertString(offset, data.toString());
+    editor.getDocument().insertString(offset, expression);
 //    editor.getDocument().insertString(context.getMethod().getBody().getTextOffset() + 1, data.toString());
 
     PsiDocumentManager.getInstance(editor.getProject()).commitDocument(editor.getDocument());
-    CodeStyleManager.getInstance(editor.getProject()).reformatRange(context.getMethod(), offset, offset + data.length());
+    CodeStyleManager.getInstance(editor.getProject()).reformatRange(context.getMethod(), offset, offset + expression.length());
 //    reformatMethod.getBody().getText();
 //    final PsiFile psiFile = PsiUtilBase.getPsiFileInEditor(editor, editor.getProject());
 //    JavaCodeStyleManager.getInstance(editor.getProject()).optimizeImports(psiFile);
