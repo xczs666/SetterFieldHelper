@@ -1,9 +1,10 @@
 <idea-plugin>
-  <id>org.jenkin.intellij.plugin.setterfieldhelper</id>
+  <id>com.jenkin.intellij.plugin.setterfieldhelper</id>
   <name>SetterFieldHelper</name>
-  <vendor email="xczs666@gmail.com">jenkinXu</vendor>
+  <vendor email="303749348@qq.com">jenkinXu</vendor>
 
   <description><![CDATA[
+    <p> Assign value to objects based on input parameters.Support `lombok.Builder` and multi-parameter</p>
     <p> 自动根据入参或者this生成返回参数类型代码</p>
     <p> 创意源自于generateAllSetMethod，快捷键一致</p>
     ]]></description>
