@@ -1,5 +1,5 @@
 <idea-plugin>
-  <id>com.jenkin.intellij.plugin.setterfieldhelper</id>
+  <id>org.jenkin.intellij.plugin.setterfieldhelper</id>
   <name>SetterFieldHelper</name>
   <vendor email="303749348@qq.com">jenkinXu</vendor>
 
