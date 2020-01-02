@@ -13,9 +13,7 @@ class ConstructorExpression extends TargetExpression {
     builder.append(targetClass.getVarName())
       .append('.')
       .append(fieldHelper.getFieldName())
-      .append(' ')
-      .append('=')
-      .append(' ')
+      .append(" = ")
       .append(str)
       .append(';')
       .append('\n');

@@ -16,10 +16,7 @@ class NewTypeSetExpression extends TargetExpression {
         .append(' ')
         .append(targetClass.getVarName());
     }
-    builder.append(' ')
-      .append('=')
-      .append(' ')
-      .append("new ")
+    builder.append(" = new ")
       .append(targetClass.getPsiClass().getName())
       .append("();\n");
   }
@@ -32,9 +29,7 @@ class NewTypeSetExpression extends TargetExpression {
         .append(fieldHelper.getFirstUpperName())
         .append('(')
         .append(str)
-        .append(')')
-        .append(';')
-        .append('\n');
+        .append(");\n");
     }
   }
 }

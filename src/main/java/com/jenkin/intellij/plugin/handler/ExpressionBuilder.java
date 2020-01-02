@@ -31,20 +31,24 @@ public class ExpressionBuilder {
       if (first.isPresent()) {
         Pair<ParameterClass, FieldHelper> pair = first.get();
         // 字段名精确匹配
+        // TODO 未做类型匹配喝类型转换
         targetExpression.buildSetExpression(field, buildGetExpression(pair.getKey(), pair.getValue()));
       } else {
         Optional<Pair<ParameterClass, List<FieldHelper>>> fuzzyOption = parameters.stream().filter(o -> o.findFieldByFuzzyName(field.getFuzzyName()) != null).map(o -> new Pair<>(o, o.findFieldByFuzzyName(field.getFuzzyName()))).findFirst();
         if (fuzzyOption.isPresent()) {
           Pair<ParameterClass, List<FieldHelper>> pair = fuzzyOption.get();
           // 字段名模糊匹配
+          // TODO 未做类型匹配喝类型转换
           targetExpression.buildSetExpression(field, buildGetExpression(pair.getKey(), pair.getValue().get(0)));
         } else {
           Optional<ParameterClass> parameterOption = parameters.stream().filter(o -> field.getFieldName().equals(o.getVarName())
             && PsiTypesUtil.compareTypes(field.getPsiField().getType(), o.getPsiType(), true)).findFirst();
           if (parameterOption.isPresent()) {
             // 直接参数赋值
+            // TODO 未做类型匹配喝类型转换
             targetExpression.buildSetExpression(field, parameterOption.get().getVarName());
           } else {
+            // 未匹配到
             targetExpression.buildSetExpression(field, "");
           }
         }
