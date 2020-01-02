@@ -46,8 +46,11 @@ public class TargetClass extends AbstractHelperClass {
       hasBuilder = true;
     }
     for (PsiField psiField : allFields) {
+      if (psiField.hasModifierProperty(PsiModifier.STATIC)) {
+        continue;
+      }
       boolean fieldSetter = clzSetter || hasBuilder || psiField.hasAnnotation("lombok.Setter");
-      fieldSetter = fieldSetter || PropertyUtil.findPropertySetter(psiClass, psiField.getName(), psiField.hasModifierProperty(PsiModifier.STATIC), true) != null;
+      fieldSetter = fieldSetter || PropertyUtil.findPropertySetter(psiClass, psiField.getName(), false, true) != null;
       this.fields.add(FieldHelper.create(psiField, fieldSetter, null));
     }
   }
