@@ -4,7 +4,8 @@
   <vendor email="303749348@qq.com">jenkinXu</vendor>
 
   <description><![CDATA[
-    <p> Assign value to objects based on input parameters.Support `lombok.Builder` and multi-parameter</p>
+    <p> Assign value to objects based on input parameters.</p>
+    <p> Support `lombok.Builder` and multi-parameter</p>
     <p> 自动根据入参或者this生成返回参数类型代码</p>
     <p> 创意源自于generateAllSetMethod，快捷键一致</p>
     ]]></description>
@@ -19,9 +20,9 @@
   <actions>
     <!-- Add your actions here -->
       <action id="com.jenkin.intellij.plugin.actions.SetFieldsAction"
-              class="com.jenkin.intellij.plugin.actions.SetFieldsAction" text="Set Object Fields"
-              description="Set object fields value by params">
-          <add-to-group group-id="EditMenu" anchor="last"/>
+              class="com.jenkin.intellij.plugin.actions.SetFieldsAction" text="Setter Field Helper"
+              description="Assign value to objects based on input parameters.">
+<!--          <add-to-group group-id="EditMenu" anchor="last"/>-->
           <keyboard-shortcut keymap="$default" first-keystroke="shift alt K"/>
       </action>
   </actions>
