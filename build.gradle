@@ -60,6 +60,6 @@ intellij {
 
 patchPluginXml {
     version artifactVersion
-    pluginDescription """自动根据入参或者this生成返回参数类型代码"""
-    changeNotes """new plugin"""
+    pluginDescription(file(descriptionFile).text)
+    changeNotes(file(changesFile).text)
 }
