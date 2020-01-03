@@ -21,10 +21,6 @@ import org.jetbrains.annotations.NotNull;
 
 public class SetFieldsAction extends AbstractEditorAction<Context> {
 
-  public SetFieldsAction() {
-    new Object();
-  }
-
   @NotNull
   public Pair<Boolean, Context> beforeWriteAction(Editor editor, DataContext dataContext) {
     if (editor == null || editor.getProject() == null) {
