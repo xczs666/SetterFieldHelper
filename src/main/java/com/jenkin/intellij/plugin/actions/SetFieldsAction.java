@@ -1,5 +1,6 @@
 package com.jenkin.intellij.plugin.actions;
 
+import com.intellij.ide.highlighter.JavaFileType;
 import com.intellij.openapi.actionSystem.DataContext;
 import com.intellij.openapi.editor.Caret;
 import com.intellij.openapi.editor.Editor;
@@ -31,7 +32,7 @@ public class SetFieldsAction extends AbstractEditorAction<Context> {
     if (null != psiFile
       && psiFile.isWritable()
       && !psiFile.isDirectory()
-      && StdFileTypes.JAVA.equals(psiFile.getFileType())) {
+      && JavaFileType.INSTANCE.equals(psiFile.getFileType())) {
       final PsiClass thisPsiClass = getTargetClass(editor, psiFile);
       PsiElement elementAtCaret = PsiUtilBase.getElementAtCaret(editor);
       PsiLocalVariable variable = PsiTreeUtil.getParentOfType(elementAtCaret, PsiLocalVariable.class);

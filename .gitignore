@@ -8,3 +8,4 @@ idea-sandbox/
 *.ipr
 *.iws
 git-flow-plus.config
+.DS_Store
