@@ -1,11 +1,11 @@
 package com.jenkin.intellij.plugin.handler;
 
+import com.intellij.openapi.util.Pair;
 import com.intellij.psi.util.PsiTypesUtil;
 import com.jenkin.intellij.plugin.support.AbstractHelperClass;
 import com.jenkin.intellij.plugin.support.FieldHelper;
 import com.jenkin.intellij.plugin.support.ParameterClass;
 import com.jenkin.intellij.plugin.support.TargetClass;
-import javafx.util.Pair;
 
 import java.util.List;
 import java.util.Optional;
@@ -32,14 +32,14 @@ public class ExpressionBuilder {
         Pair<ParameterClass, FieldHelper> pair = first.get();
         // 字段名精确匹配
         // TODO 未做类型匹配喝类型转换
-        targetExpression.buildSetExpression(field, buildGetExpression(pair.getKey(), pair.getValue()));
+        targetExpression.buildSetExpression(field, buildGetExpression(pair.getFirst(), pair.getSecond()));
       } else {
         Optional<Pair<ParameterClass, List<FieldHelper>>> fuzzyOption = parameters.stream().filter(o -> o.findFieldByFuzzyName(field.getFuzzyName()) != null).map(o -> new Pair<>(o, o.findFieldByFuzzyName(field.getFuzzyName()))).findFirst();
         if (fuzzyOption.isPresent()) {
           Pair<ParameterClass, List<FieldHelper>> pair = fuzzyOption.get();
           // 字段名模糊匹配
           // TODO 未做类型匹配喝类型转换
-          targetExpression.buildSetExpression(field, buildGetExpression(pair.getKey(), pair.getValue().get(0)));
+          targetExpression.buildSetExpression(field, buildGetExpression(pair.getFirst(), pair.getSecond().get(0)));
         } else {
           Optional<ParameterClass> parameterOption = parameters.stream().filter(o -> field.getFieldName().equals(o.getVarName())
             && PsiTypesUtil.compareTypes(field.getPsiField().getType(), o.getPsiType(), true)).findFirst();
